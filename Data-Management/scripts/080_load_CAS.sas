@@ -1,29 +1,43 @@
-cas casauto;
+cas casauto sessopts=(caslib=casuser metrics=true);
 
-* source caslib;
-%let DM_SRC=DM;
+%let gateuserid=&sysuserid ;
+%put My Userid is: &gateuserid ;
+options msglevel=i ;
 
-* target caslib;
-%let DM_TRG=Public;
+/* assign a BASE SAS libname */ 
+libname indata "/home/&gateuserid./";
 
-* Your UserID;
-%let userid=<Your course assigned user ID (e.g. gatedemoxxx)>;
+/* save .sas7bdat file under user’s home directory */
+data indata.prdsale(replace=yes); 
+set sashelp.prdsale ; 
+run;
 
+/* path type CASLIB, source located on CAS controller */
+/* commented since its pre-defined */ 
+/*
+caslib DM path="/gelcontent/demo/DM/data/" type=path;
+*/
 
-* Load files into target caslib;
-* Drop first;
-proc casutil incaslib="&DM_TRG";
-	droptable casdata="&userid._catcode" quiet;
-	droptable casdata="&userid._mailorder" quiet;
-	droptable casdata="&userid._products" quiet;
-	droptable casdata="&userid._customers" quiet;
-quit;
+/* drop in-memory CAS table  */
+proc casutil ;
+   droptable casdata="&gateuserid._DATA_prdsale" incaslib="DM" quiet;
+quit ;
 
-proc casutil incaslib="&DM_SRC" outcaslib="&DM_TRG";
-	load casdata="catcode.csv" casout="&userid._catcode" copies=0 promote;
-	load casdata="mailorder.csv" casout="&userid._mailorder" copies=0 promote;
-	load casdata="products.csv" casout="&userid._products" copies=0 promote;
-	load casdata="customers.csv" casout="&userid._customers" copies=0 promote;
-quit;
+/* load SAS datasets from client machine to CAS */  
+/* notice where clause, repeat, and compress statement during data load */ 
+proc casutil ;
+    load data=indata.prdsale(where=(country="U.S.A."))
+        outcaslib="DM" casout="&gateuserid._DATA_prdsale" replace copies=0 ; 
+quit ;
+
+/* list in-memory table from path CASLIB DM  */
+proc casutil ;
+   list tables incaslib="DM" ;
+quit ;
+
+/* drop again in-memory CAS table  */
+proc casutil ;
+   droptable casdata="&gateuserid._DATA_prdsale" incaslib="DM" quiet;
+quit ;
 
 cas casauto terminate;
