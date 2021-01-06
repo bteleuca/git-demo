@@ -1,4 +1,6 @@
+/*Lists tables and files in Public caslib*/
 cas casauto;
+
 caslib _all_ assign;
 proc casutil incaslib="PUBLIC";
 list files; list tables;
